@@ -4,6 +4,8 @@ import {
   type InsertTeam, type InsertParticipant, type InsertProgram, type InsertRegistration,
   type FirstRegistration, type ParticipantWithTeam, type RegistrationWithDetails
 } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   // Teams
@@ -16,7 +18,7 @@ export interface IStorage {
   getParticipantByCode(code: string): Promise<Participant | undefined>;
   getParticipantByName(name: string): Promise<Participant | undefined>;
   getParticipantWithTeam(id: number): Promise<ParticipantWithTeam | undefined>;
-  createParticipant(participant: InsertParticipant): Promise<Participant>;
+  createParticipant(participant: InsertParticipant & { uniqueCode: string }): Promise<Participant>;
   updateParticipantImage(id: number, imageUrl: string): Promise<Participant | undefined>;
   
   // Programs
@@ -40,24 +42,203 @@ export interface IStorage {
     nonStagePrograms: number;
     totalPrograms: number;
   }>;
+  
+  // Utility
+  generateUniqueCode(teamCode: string): Promise<string>;
 }
 
-export class MemStorage implements IStorage {
-  private teams: Map<number, Team> = new Map();
-  private participants: Map<number, Participant> = new Map();
-  private programs: Map<number, Program> = new Map();
-  private registrations: Map<number, Registration> = new Map();
-  
-  private currentTeamId = 1;
-  private currentParticipantId = 1;
-  private currentProgramId = 1;
-  private currentRegistrationId = 1;
-
-  constructor() {
-    this.seedData();
+export class DatabaseStorage implements IStorage {
+  // Teams
+  async getTeams(): Promise<Team[]> {
+    return await db.select().from(teams);
   }
 
-  private seedData() {
+  async getTeam(id: number): Promise<Team | undefined> {
+    const [team] = await db.select().from(teams).where(eq(teams.id, id));
+    return team || undefined;
+  }
+
+  async createTeam(team: InsertTeam): Promise<Team> {
+    const [newTeam] = await db.insert(teams).values(team).returning();
+    return newTeam;
+  }
+
+  // Participants
+  async getParticipant(id: number): Promise<Participant | undefined> {
+    const [participant] = await db.select().from(participants).where(eq(participants.id, id));
+    return participant || undefined;
+  }
+
+  async getParticipantByCode(code: string): Promise<Participant | undefined> {
+    const [participant] = await db.select().from(participants).where(eq(participants.uniqueCode, code));
+    return participant || undefined;
+  }
+
+  async getParticipantByName(name: string): Promise<Participant | undefined> {
+    const [participant] = await db.select().from(participants).where(eq(participants.fullName, name));
+    return participant || undefined;
+  }
+
+  async getParticipantWithTeam(id: number): Promise<ParticipantWithTeam | undefined> {
+    const result = await db
+      .select()
+      .from(participants)
+      .leftJoin(teams, eq(participants.teamId, teams.id))
+      .where(eq(participants.id, id));
+    
+    if (!result[0] || !result[0].teams) return undefined;
+    
+    return {
+      ...result[0].participants,
+      team: result[0].teams
+    };
+  }
+
+  async createParticipant(participant: InsertParticipant & { uniqueCode: string }): Promise<Participant> {
+    const [newParticipant] = await db.insert(participants).values(participant).returning();
+    return newParticipant;
+  }
+
+  async updateParticipantImage(id: number, imageUrl: string): Promise<Participant | undefined> {
+    const [updatedParticipant] = await db
+      .update(participants)
+      .set({ profileImage: imageUrl })
+      .where(eq(participants.id, id))
+      .returning();
+    return updatedParticipant || undefined;
+  }
+
+  // Programs
+  async getPrograms(): Promise<Program[]> {
+    return await db.select().from(programs);
+  }
+
+  async getProgramsByType(type: string, participationType?: string): Promise<Program[]> {
+    let query = db.select().from(programs).where(eq(programs.type, type));
+    
+    if (participationType) {
+      query = query.where(eq(programs.participationType, participationType));
+    }
+    
+    return await query;
+  }
+
+  async getProgram(id: number): Promise<Program | undefined> {
+    const [program] = await db.select().from(programs).where(eq(programs.id, id));
+    return program || undefined;
+  }
+
+  async createProgram(program: InsertProgram): Promise<Program> {
+    const [newProgram] = await db.insert(programs).values(program).returning();
+    return newProgram;
+  }
+
+  // Registrations
+  async getRegistrations(): Promise<Registration[]> {
+    return await db.select().from(registrations);
+  }
+
+  async getRegistrationsByParticipant(participantId: number): Promise<Registration[]> {
+    return await db.select().from(registrations).where(eq(registrations.participantId, participantId));
+  }
+
+  async getRegistrationsWithDetails(): Promise<RegistrationWithDetails[]> {
+    const result = await db
+      .select()
+      .from(registrations)
+      .leftJoin(participants, eq(registrations.participantId, participants.id))
+      .leftJoin(teams, eq(participants.teamId, teams.id))
+      .leftJoin(programs, eq(registrations.programId, programs.id));
+
+    return result.map(row => ({
+      ...row.registrations,
+      participant: {
+        ...row.participants!,
+        team: row.teams!
+      },
+      program: row.programs!
+    }));
+  }
+
+  async getRegistrationsByParticipantWithDetails(participantId: number): Promise<RegistrationWithDetails[]> {
+    const result = await db
+      .select()
+      .from(registrations)
+      .leftJoin(participants, eq(registrations.participantId, participants.id))
+      .leftJoin(teams, eq(participants.teamId, teams.id))
+      .leftJoin(programs, eq(registrations.programId, programs.id))
+      .where(eq(registrations.participantId, participantId));
+
+    return result.map(row => ({
+      ...row.registrations,
+      participant: {
+        ...row.participants!,
+        team: row.teams!
+      },
+      program: row.programs!
+    }));
+  }
+
+  async createRegistration(registration: InsertRegistration): Promise<Registration> {
+    const [newRegistration] = await db
+      .insert(registrations)
+      .values({
+        ...registration,
+        registeredAt: new Date().toISOString()
+      })
+      .returning();
+    return newRegistration;
+  }
+
+  async deleteRegistration(id: number): Promise<boolean> {
+    const result = await db.delete(registrations).where(eq(registrations.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Statistics
+  async getStats(): Promise<{
+    totalRegistered: number;
+    stagePrograms: number;
+    nonStagePrograms: number;
+    totalPrograms: number;
+  }> {
+    const allRegistrations = await this.getRegistrationsWithDetails();
+    const uniqueParticipants = new Set(allRegistrations.map(r => r.participantId));
+    
+    const stagePrograms = allRegistrations.filter(r => r.program.type === 'stage').length;
+    const nonStagePrograms = allRegistrations.filter(r => r.program.type === 'non-stage').length;
+
+    return {
+      totalRegistered: uniqueParticipants.size,
+      stagePrograms,
+      nonStagePrograms,
+      totalPrograms: allRegistrations.length
+    };
+  }
+
+  // Utility method to generate unique codes
+  async generateUniqueCode(teamCode: string): Promise<string> {
+    const existingParticipants = await db.select().from(participants);
+    const existingCodes = existingParticipants.map(p => p.uniqueCode);
+    let counter = 1;
+    let code: string;
+    
+    do {
+      code = `${teamCode}${String(counter).padStart(3, '0')}`;
+      counter++;
+    } while (existingCodes.includes(code));
+    
+    return code;
+  }
+}
+
+// Initialize database with seed data
+async function seedDatabase() {
+  try {
+    // Check if teams already exist
+    const existingTeams = await db.select().from(teams);
+    if (existingTeams.length > 0) return;
+
     // Seed teams
     const teamsData = [
       { name: "QUDS Team", code: "QU" },
@@ -65,11 +246,7 @@ export class MemStorage implements IStorage {
       { name: "NOOR Team", code: "NO" },
       { name: "FAJR Team", code: "FA" },
     ];
-
-    teamsData.forEach(teamData => {
-      const team: Team = { id: this.currentTeamId++, ...teamData };
-      this.teams.set(team.id, team);
-    });
+    await db.insert(teams).values(teamsData);
 
     // Seed programs
     const programsData = [
@@ -88,195 +265,13 @@ export class MemStorage implements IStorage {
       { name: "Individual Calligraphy", type: "non-stage", participationType: "individual", description: "Solo calligraphy competition" },
       { name: "Individual Creative Writing", type: "non-stage", participationType: "individual", description: "Individual writing contest" },
     ];
-
-    programsData.forEach(programData => {
-      const program: Program = { id: this.currentProgramId++, ...programData };
-      this.programs.set(program.id, program);
-    });
-  }
-
-  // Teams
-  async getTeams(): Promise<Team[]> {
-    return Array.from(this.teams.values());
-  }
-
-  async getTeam(id: number): Promise<Team | undefined> {
-    return this.teams.get(id);
-  }
-
-  async createTeam(team: InsertTeam): Promise<Team> {
-    const newTeam: Team = { id: this.currentTeamId++, ...team };
-    this.teams.set(newTeam.id, newTeam);
-    return newTeam;
-  }
-
-  // Participants
-  async getParticipant(id: number): Promise<Participant | undefined> {
-    return this.participants.get(id);
-  }
-
-  async getParticipantByCode(code: string): Promise<Participant | undefined> {
-    return Array.from(this.participants.values()).find(p => p.uniqueCode === code);
-  }
-
-  async getParticipantByName(name: string): Promise<Participant | undefined> {
-    return Array.from(this.participants.values()).find(p => p.fullName.toLowerCase() === name.toLowerCase());
-  }
-
-  async getParticipantWithTeam(id: number): Promise<ParticipantWithTeam | undefined> {
-    const participant = this.participants.get(id);
-    if (!participant) return undefined;
-    
-    const team = this.teams.get(participant.teamId);
-    if (!team) return undefined;
-    
-    return { ...participant, team };
-  }
-
-  async createParticipant(participant: InsertParticipant): Promise<Participant> {
-    const newParticipant: Participant = { 
-      id: this.currentParticipantId++, 
-      ...participant 
-    };
-    this.participants.set(newParticipant.id, newParticipant);
-    return newParticipant;
-  }
-
-  async updateParticipantImage(id: number, imageUrl: string): Promise<Participant | undefined> {
-    const participant = this.participants.get(id);
-    if (!participant) return undefined;
-    
-    const updatedParticipant = { ...participant, profileImage: imageUrl };
-    this.participants.set(id, updatedParticipant);
-    return updatedParticipant;
-  }
-
-  // Programs
-  async getPrograms(): Promise<Program[]> {
-    return Array.from(this.programs.values());
-  }
-
-  async getProgramsByType(type: string, participationType?: string): Promise<Program[]> {
-    return Array.from(this.programs.values()).filter(p => {
-      if (p.type !== type) return false;
-      if (participationType && p.participationType !== participationType) return false;
-      return true;
-    });
-  }
-
-  async getProgram(id: number): Promise<Program | undefined> {
-    return this.programs.get(id);
-  }
-
-  async createProgram(program: InsertProgram): Promise<Program> {
-    const newProgram: Program = { id: this.currentProgramId++, ...program };
-    this.programs.set(newProgram.id, newProgram);
-    return newProgram;
-  }
-
-  // Registrations
-  async getRegistrations(): Promise<Registration[]> {
-    return Array.from(this.registrations.values());
-  }
-
-  async getRegistrationsByParticipant(participantId: number): Promise<Registration[]> {
-    return Array.from(this.registrations.values()).filter(r => r.participantId === participantId);
-  }
-
-  async getRegistrationsWithDetails(): Promise<RegistrationWithDetails[]> {
-    const registrations = Array.from(this.registrations.values());
-    const result: RegistrationWithDetails[] = [];
-
-    for (const registration of registrations) {
-      const participantWithTeam = await this.getParticipantWithTeam(registration.participantId);
-      const program = this.programs.get(registration.programId);
-      
-      if (participantWithTeam && program) {
-        result.push({
-          ...registration,
-          participant: participantWithTeam,
-          program
-        });
-      }
-    }
-
-    return result;
-  }
-
-  async getRegistrationsByParticipantWithDetails(participantId: number): Promise<RegistrationWithDetails[]> {
-    const registrations = await this.getRegistrationsByParticipant(participantId);
-    const result: RegistrationWithDetails[] = [];
-
-    for (const registration of registrations) {
-      const participantWithTeam = await this.getParticipantWithTeam(registration.participantId);
-      const program = this.programs.get(registration.programId);
-      
-      if (participantWithTeam && program) {
-        result.push({
-          ...registration,
-          participant: participantWithTeam,
-          program
-        });
-      }
-    }
-
-    return result;
-  }
-
-  async createRegistration(registration: InsertRegistration): Promise<Registration> {
-    const newRegistration: Registration = { 
-      id: this.currentRegistrationId++, 
-      ...registration,
-      registeredAt: new Date().toISOString()
-    };
-    this.registrations.set(newRegistration.id, newRegistration);
-    return newRegistration;
-  }
-
-  async deleteRegistration(id: number): Promise<boolean> {
-    return this.registrations.delete(id);
-  }
-
-  // Statistics
-  async getStats(): Promise<{
-    totalRegistered: number;
-    stagePrograms: number;
-    nonStagePrograms: number;
-    totalPrograms: number;
-  }> {
-    const registrations = Array.from(this.registrations.values());
-    const uniqueParticipants = new Set(registrations.map(r => r.participantId));
-    
-    let stagePrograms = 0;
-    let nonStagePrograms = 0;
-
-    for (const registration of registrations) {
-      const program = this.programs.get(registration.programId);
-      if (program?.type === 'stage') stagePrograms++;
-      else if (program?.type === 'non-stage') nonStagePrograms++;
-    }
-
-    return {
-      totalRegistered: uniqueParticipants.size,
-      stagePrograms,
-      nonStagePrograms,
-      totalPrograms: registrations.length
-    };
-  }
-
-  // Utility method to generate unique codes
-  generateUniqueCode(teamCode: string): string {
-    const existingCodes = Array.from(this.participants.values()).map(p => p.uniqueCode);
-    let counter = 1;
-    let code: string;
-    
-    do {
-      code = `${teamCode}${String(counter).padStart(3, '0')}`;
-      counter++;
-    } while (existingCodes.includes(code));
-    
-    return code;
+    await db.insert(programs).values(programsData);
+  } catch (error) {
+    console.error('Error seeding database:', error);
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
+
+// Initialize database
+seedDatabase();
