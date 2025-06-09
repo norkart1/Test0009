@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { firstRegistrationSchema, secondRegistrationSchema } from "@shared/schema";
@@ -231,11 +232,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Serve uploaded files
+  // Serve uploaded files with proper headers
   app.use('/uploads', (req, res, next) => {
-    // In production, this should be handled by a proper file server
     const filePath = path.join(uploadDir, req.path);
     if (fs.existsSync(filePath)) {
+      // Set proper content type for images
+      const ext = path.extname(filePath).toLowerCase();
+      if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext)) {
+        res.setHeader('Content-Type', `image/${ext.slice(1) === 'jpg' ? 'jpeg' : ext.slice(1)}`);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+      }
       res.sendFile(filePath);
     } else {
       res.status(404).json({ message: "File not found" });

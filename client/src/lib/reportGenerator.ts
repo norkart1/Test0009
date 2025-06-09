@@ -7,40 +7,127 @@ export function generateIndividualReport(
 ): void {
   const doc = new jsPDF();
   
-  // Header
-  doc.setFontSize(20);
-  doc.text('Arts Fest Registration Report', 20, 30);
+  // Modern header with gradient effect
+  doc.setFillColor(59, 130, 246); // Blue gradient start
+  doc.rect(0, 0, 210, 45, 'F');
   
-  // Participant Info
-  doc.setFontSize(14);
-  doc.text('Participant Information', 20, 50);
+  // White header text
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(24);
+  doc.text('مهرجان الفنون', 105, 20, { align: 'center' });
+  doc.setFontSize(16);
+  doc.text('Arts Festival Registration Report', 105, 30, { align: 'center' });
   doc.setFontSize(12);
-  doc.text(`Name: ${participant.fullName}`, 20, 65);
-  doc.text(`Team: ${participant.team.name}`, 20, 75);
-  doc.text(`Code: ${participant.uniqueCode}`, 20, 85);
+  doc.text(`تقرير التسجيل الفردي`, 105, 40, { align: 'center' });
   
-  // Programs
-  doc.setFontSize(14);
-  doc.text('Registered Programs', 20, 105);
+  // Reset text color
+  doc.setTextColor(0, 0, 0);
   
+  // Participant Info Card
+  doc.setFillColor(248, 250, 252); // Light gray background
+  doc.roundedRect(15, 55, 180, 45, 5, 5, 'F');
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(1);
+  doc.roundedRect(15, 55, 180, 45, 5, 5, 'S');
+  
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(30, 41, 59);
+  doc.text('معلومات المشارك | Participant Information', 25, 70);
+  
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+  doc.setTextColor(51, 65, 85);
+  
+  // Modern info layout with icons (represented as bullets)
+  doc.text('●', 25, 82);
+  doc.text(`الاسم | Name: ${participant.fullName}`, 32, 82);
+  doc.text('●', 25, 90);
+  doc.text(`الفريق | Team: ${participant.team.name}`, 32, 90);
+  doc.text('●', 25, 98);
+  doc.text(`الرمز | Code: ${participant.uniqueCode}`, 32, 98);
+  
+  // Programs section with modern styling
   let yPosition = 120;
+  
+  // Programs header
+  doc.setFillColor(34, 197, 94); // Green background
+  doc.rect(15, yPosition - 5, 180, 20, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text(`البرامج المسجلة | Registered Programs (${registrations.length})`, 25, yPosition + 7);
+  
+  yPosition += 25;
+  doc.setTextColor(0, 0, 0);
+  
   registrations.forEach((registration, index) => {
-    doc.setFontSize(12);
-    doc.text(`${index + 1}. ${registration.program.name}`, 25, yPosition);
-    doc.setFontSize(10);
-    doc.text(`   Type: ${registration.program.type} | Participation: ${registration.program.participationType}`, 25, yPosition + 10);
-    doc.text(`   Registered: ${new Date(registration.registeredAt).toLocaleDateString()}`, 25, yPosition + 20);
-    yPosition += 35;
-    
+    // Check for new page
     if (yPosition > 250) {
       doc.addPage();
       yPosition = 30;
     }
+    
+    // Program card background
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(20, yPosition - 5, 170, 30, 3, 3, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(20, yPosition - 5, 170, 30, 3, 3, 'S');
+    
+    // Program number badge
+    doc.setFillColor(99, 102, 241);
+    doc.circle(30, yPosition + 5, 6, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text((index + 1).toString(), 30, yPosition + 7, { align: 'center' });
+    
+    // Program details
+    doc.setTextColor(30, 41, 59);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(registration.program.name, 40, yPosition + 2);
+    
+    doc.setTextColor(71, 85, 105);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(registration.program.description || '', 40, yPosition + 10);
+    
+    // Type badges
+    const typeColor = registration.program.type === 'stage' ? [147, 51, 234] : [34, 197, 94];
+    doc.setFillColor(typeColor[0], typeColor[1], typeColor[2]);
+    doc.roundedRect(40, yPosition + 15, 25, 6, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.text(registration.program.type, 52.5, yPosition + 18.5, { align: 'center' });
+    
+    const participationColor = registration.program.participationType === 'group' ? [34, 197, 94] : [251, 146, 60];
+    doc.setFillColor(participationColor[0], participationColor[1], participationColor[2]);
+    doc.roundedRect(70, yPosition + 15, 30, 6, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.text(registration.program.participationType, 85, yPosition + 18.5, { align: 'center' });
+    
+    // Date
+    doc.setTextColor(107, 114, 128);
+    doc.setFontSize(8);
+    doc.text(`تاريخ التسجيل: ${new Date(registration.registeredAt).toLocaleDateString('ar-SA')}`, 150, yPosition + 18.5);
+    
+    yPosition += 40;
   });
   
-  // Footer
+  // Modern footer
+  const footerY = doc.internal.pageSize.height - 25;
+  doc.setFillColor(30, 41, 59);
+  doc.rect(0, footerY, 210, 25, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, doc.internal.pageSize.height - 20);
+  doc.text(`تم إنشاء التقرير في: ${new Date().toLocaleDateString('ar-SA')}`, 20, footerY + 10);
+  doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, footerY + 18);
+  doc.text('Arts Festival Registration System', 190, footerY + 14, { align: 'right' });
   
   doc.save(`${participant.fullName}_Arts_Fest_Report.pdf`);
 }

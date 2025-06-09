@@ -249,20 +249,20 @@ async function seedDatabase() {
 
     // Seed programs
     const programsData = [
-      { name: "Group Dance Competition", type: "stage", participationType: "group", description: "Competitive dance performance for groups" },
-      { name: "Group Drama Performance", type: "stage", participationType: "group", description: "Theatrical drama performance" },
-      { name: "Group Musical Performance", type: "stage", participationType: "group", description: "Musical ensemble performance" },
-      { name: "Group Poetry Recitation", type: "stage", participationType: "group", description: "Collective poetry recitation" },
-      { name: "Solo Dance Performance", type: "stage", participationType: "individual", description: "Individual dance performance" },
-      { name: "Solo Singing", type: "stage", participationType: "individual", description: "Individual vocal performance" },
-      { name: "Monologue Performance", type: "stage", participationType: "individual", description: "Solo dramatic performance" },
-      { name: "Stand-up Comedy", type: "stage", participationType: "individual", description: "Individual comedy performance" },
-      { name: "Group Art Exhibition", type: "non-stage", participationType: "group", description: "Collaborative art display" },
-      { name: "Group Photography Contest", type: "non-stage", participationType: "group", description: "Team photography competition" },
-      { name: "Individual Painting", type: "non-stage", participationType: "individual", description: "Solo painting competition" },
-      { name: "Individual Photography", type: "non-stage", participationType: "individual", description: "Individual photography contest" },
-      { name: "Individual Calligraphy", type: "non-stage", participationType: "individual", description: "Solo calligraphy competition" },
-      { name: "Individual Creative Writing", type: "non-stage", participationType: "individual", description: "Individual writing contest" },
+      { name: "Arabic Speech 01", type: "stage", participationType: "group", description: "مسابقة الخطابة العربية للمجموعات" },
+      { name: "Arabic Speech 02", type: "stage", participationType: "group", description: "العروض المسرحية الجماعية" },
+      { name: "Arabic Speech 03", type: "stage", participationType: "group", description: "الأداء الموسيقي الجماعي" },
+      { name: "Arabic Speech 04", type: "stage", participationType: "group", description: "إلقاء الشعر الجماعي" },
+      { name: "Arabic Speech 05", type: "stage", participationType: "individual", description: "أداء الرقص الفردي" },
+      { name: "Arabic Speech 06", type: "stage", participationType: "individual", description: "الغناء الفردي" },
+      { name: "Arabic Speech 07", type: "stage", participationType: "individual", description: "الأداء المسرحي الفردي" },
+      { name: "Arabic Speech 08", type: "stage", participationType: "individual", description: "الكوميديا الفردية" },
+      { name: "Arabic Speech 09", type: "non-stage", participationType: "group", description: "معرض الفنون الجماعي" },
+      { name: "Arabic Speech 10", type: "non-stage", participationType: "group", description: "مسابقة التصوير الجماعي" },
+      { name: "Arabic Speech 11", type: "non-stage", participationType: "individual", description: "مسابقة الرسم الفردي" },
+      { name: "Arabic Speech 12", type: "non-stage", participationType: "individual", description: "مسابقة التصوير الفردي" },
+      { name: "Arabic Speech 13", type: "non-stage", participationType: "individual", description: "مسابقة الخط العربي" },
+      { name: "Arabic Speech 14", type: "non-stage", participationType: "individual", description: "مسابقة الكتابة الإبداعية" },
     ];
     await db.insert(programs).values(programsData);
   } catch (error) {
