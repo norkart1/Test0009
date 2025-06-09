@@ -88,7 +88,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Generate unique code
-      const uniqueCode = storage.generateUniqueCode(team.code);
+      const uniqueCode = await storage.generateUniqueCode(team.code);
 
       // Create participant
       const participant = await storage.createParticipant({

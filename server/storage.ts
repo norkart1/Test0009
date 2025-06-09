@@ -5,7 +5,7 @@ import {
   type FirstRegistration, type ParticipantWithTeam, type RegistrationWithDetails
 } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
   // Teams
@@ -114,13 +114,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProgramsByType(type: string, participationType?: string): Promise<Program[]> {
-    let query = db.select().from(programs).where(eq(programs.type, type));
-    
     if (participationType) {
-      query = query.where(eq(programs.participationType, participationType));
+      return await db.select().from(programs)
+        .where(and(eq(programs.type, type), eq(programs.participationType, participationType)));
     }
     
-    return await query;
+    return await db.select().from(programs).where(eq(programs.type, type));
   }
 
   async getProgram(id: number): Promise<Program | undefined> {
@@ -192,7 +191,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteRegistration(id: number): Promise<boolean> {
     const result = await db.delete(registrations).where(eq(registrations.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   // Statistics
