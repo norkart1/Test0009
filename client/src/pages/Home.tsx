@@ -711,10 +711,10 @@ export default function Home() {
                                     <h4 className="font-semibold text-gray-900 dark:text-white">{program.name}</h4>
                                     <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{program.description}</p>
                                     <div className="flex items-center space-x-2 mt-2">
-                                      <Badge variant="outline" size="sm">
+                                      <Badge variant="outline">
                                         {program.type}
                                       </Badge>
-                                      <Badge variant="outline" size="sm">
+                                      <Badge variant="outline">
                                         {program.participationType}
                                       </Badge>
                                     </div>
@@ -799,8 +799,8 @@ export default function Home() {
                             <div>
                               <h4 className="font-semibold text-gray-900 dark:text-white">{registration.program.name}</h4>
                               <div className="flex items-center space-x-2 mt-1">
-                                <Badge variant="outline" size="sm">{registration.program.type}</Badge>
-                                <Badge variant="outline" size="sm">{registration.program.participationType}</Badge>
+                                <Badge variant="outline">{registration.program.type}</Badge>
+                                <Badge variant="outline">{registration.program.participationType}</Badge>
                                 <span className="text-xs text-gray-500 dark:text-gray-400">
                                   {new Date(registration.registeredAt).toLocaleDateString()}
                                 </span>
